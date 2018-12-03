@@ -2,7 +2,7 @@
 // eg. abcdef, aabbcc, ababab, etc.
 
 // calculate a "checksum" of all the box IDs
-pub fn d2p1(input: &str) -> u64 {
+pub fn p1(input: &str) -> u64 {
 	let offset = 'a' as usize;
 
 	println!("offsets: a {}, b {}", 'a' as usize - offset, 'b' as usize - offset);
@@ -39,4 +39,41 @@ pub fn d2p1(input: &str) -> u64 {
 	}
 
 	return two_count * three_count;
+}
+
+fn check_ids(a: &str, b: &str) -> String {
+	let mut result = String::new();
+
+	let achars = a.chars();
+	let mut bchars = b.chars();
+
+	for c in achars {
+		if c == bchars.next().unwrap() {
+			result.push(c);
+		}
+	}
+
+	return result;
+}
+
+// find the two boxes with only one differing character (location sensitive),
+// return the common characters
+pub fn p2(input: &str) -> String {
+	let lines: Vec<&str> = input.lines().collect();
+	let mut a = 0;
+	while a < lines.len() {
+		let ida = lines[a];
+		let mut b = a + 1;
+		while b < lines.len() {
+			let idb = lines[b];
+			let matching = check_ids(ida, idb);
+			if matching.len() == ida.len() - 1 {
+				return matching;
+			}
+			b += 1;
+		}
+		a += 1;
+	}
+
+	panic!("Could not find the boxes");
 }

@@ -16,22 +16,29 @@ mod tests {
 
     #[test]
     fn day1p1() {
-    	let contents = ::file_to_str("day1.txt");
+    	let contents = file_to_str("day1.txt");
     	let value = ::day1::d1p1(&contents);
     	println!("Day 1 part 1 result: {}", value);
     }
 
     #[test]
     fn day1p2() {
-    	let contents = ::file_to_str("day1.txt");
+    	let contents = file_to_str("day1.txt");
     	let value = ::day1::d1p2(&contents);
     	println!("Day 1 part 2 result: {}", value);
     }
 
     #[test]
     fn day2p1() {
-        let contents = ::file_to_str("day2.txt");
-        let value = ::day2::d2p1(&contents);
+        let contents = file_to_str("day2.txt");
+        let value = ::day2::p1(&contents);
         println!("Day 2 part 1 result: {}", value);
+    }
+
+    #[test]
+    fn day2p2() {
+        let contents = file_to_str("day2.txt");
+        let value = ::day2::p2(&contents);
+        println!("Day 2 part 2 result: {}", value);
     }
 }
