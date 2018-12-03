@@ -19,7 +19,7 @@ pub fn d1p2(input: &str) -> i64 {
 	let mut occurences = HashSet::new();
 
 	// loop until we encounter a frequency for the second time
-	while true {
+	loop {
 		for line in input.lines() {
 			frequency += line.parse::<i64>().unwrap();
 			match occurences.get(&frequency) {
@@ -28,6 +28,4 @@ pub fn d1p2(input: &str) -> i64 {
 			};
 		}
 	}
-
-	panic!("Something went wrong");
 }
