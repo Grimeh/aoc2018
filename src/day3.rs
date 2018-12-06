@@ -3,6 +3,34 @@
 // 		#123 @ 3,2: 5x4
 // 		#id @ x,y: wxh
 
+fn tokenise(input: &str) -> Vec<u32> {
+	let mut result = Vec::new();
+	let mut token_idx: i64 = -1;
+
+	for (i, c) in input.char_indices() {
+		let is_digit = c.is_digit(10);
+		if token_idx != -1 {
+			if !is_digit {
+				// we've reached end of the token
+				// println!("found token at {}..{}: {:?}", token_idx, i, &input[token_idx as usize..i]);
+				result.push(input[token_idx as usize..i].parse::<u32>().unwrap());
+				token_idx = -1;
+			}
+		} else {
+			if is_digit {
+				// we've found a new token
+				token_idx = i as i64;
+			}
+		}
+	}
+
+	if token_idx != -1 {
+		result.push(input[token_idx as usize..].parse::<u32>().unwrap());
+	}
+
+	return result;
+}
+
 #[derive(Debug)]
 struct Rect {
 	x: u32,
@@ -25,6 +53,14 @@ struct Claim {
 	size: Rect,
 }
 
+// impl Copy for Claim {}
+
+// impl Clone for Claim {
+// 	fn clone(&self) -> Claim {
+// 		*self
+// 	}
+// }
+
 impl Claim {
 	fn new() -> Claim {
 		Claim {
@@ -34,55 +70,56 @@ impl Claim {
 				y: 0,
 			},
 			size: Rect {
-				w: 0,
-				h: 0,
+				x: 0,
+				y: 0,
 			},
 		}
 	}
 
 	fn parse(input: &str) -> Claim {
-		let mut claim = Claim {
-			id: 0,
+		let tokens = tokenise(input);
+		// TODO check if tokens length is not exactly equal to what we need
+
+		return Claim {
+			id: tokens[0],
 			coords: Rect {
-				x: 0,
-				y: 0,
+				x: tokens[1],
+				y: tokens[2],
 			},
 			size: Rect {
-				w: 0,
-				h: 0,
+				x: tokens[3],
+				y: tokens[4],
 			},
 		};
-
-		let chars = line.chars();
-
-		// extract ID
-		chars.next(); // '#'
-		let idStr = chars
-			.by_ref() // do not consume the iterator
-			.take_while(|c| **c != ' ') // take the number following the '#'
-			.as_str();
-		claim.id = idStr.parse::<u32>().unwrap();
-
-		chars.next(); // '@'
-		chars.next(); // ' '
-
-		// extract coords of rect
-		claim.coords.x = chars.next().unwrap().to_digit(10).unwrap();
-		chars.next(); // ','
-		claim.coords.y = chars.next().unwrap().to_digit(10).unwrap();
-
-		// extract size of rect
-		chars.next(); // ':'
-		chars.next(); // ' '
-		claim.size.x = chars.next().unwrap().to_digit(10).unwrap();
-		chars.next(); // 'x'
-		claim.size.y = chars.next().unwrap().to_digit(10).unwrap();
-
-		return claim;
 	}
 }
 
 // calculate how many square inches of the 1000x1000 square inch fabric have 2 or more overlapping claims
-fn p1(input: &str) -> u32 {
+pub fn p1(input: &str) -> u32 {
+	let mut result = 0;
+
+	let mut fabric = Vec::new();
+	fabric.resize(1000, [0_u32; 1000]);
+
 	let claims = input.lines().map(|line| Claim::parse(line));
+
+	for claim in claims {
+		for x in 0..claim.size.x {
+			let column = &mut fabric[(x + claim.coords.x) as usize];
+			for y in 0..claim.size.y {
+				let cell = &mut column[(y + claim.coords.y) as usize];
+				*cell += 1;
+				if *cell == 2 {
+					result += 1;
+				}
+			}
+		}
+	}
+
+	return result;
+}
+
+// find the single claim that does not overlap any other claim
+pub fn p2(input: &str) -> u32 {
+	return 0;
 }
