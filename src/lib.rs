@@ -49,4 +49,11 @@ mod tests {
         let value = ::day3::p1(&contents);
         println!("Day 3 part 1 result: {}", value);
     }
+    
+    #[test]
+    fn day3p2() {
+        let contents = file_to_str("day3.txt");
+        let value = ::day3::p2(&contents);
+        println!("Day 3 part 2 result: {}", value);
+    }
 }

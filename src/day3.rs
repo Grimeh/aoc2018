@@ -121,5 +121,34 @@ pub fn p1(input: &str) -> u32 {
 
 // find the single claim that does not overlap any other claim
 pub fn p2(input: &str) -> u32 {
-	return 0;
+	let mut fabric = Vec::new();
+	fabric.resize(1000, [None; 1000]);
+
+	let claims: Vec<Claim> = input.lines().map(|line| Claim::parse(line)).collect();
+	let mut intact_claims: Vec<u32> = claims.iter().map(|claim| claim.id).collect();
+
+	for claim in claims {
+		for x in 0..claim.size.x {
+			let column = &mut fabric[(x + claim.coords.x) as usize];
+			for y in 0..claim.size.y {
+				let cell = column[(y + claim.coords.y) as usize];
+				if let Some(id) = cell {
+					let pos = intact_claims.iter().position(|c_id| *c_id == id);
+					if let Some(idx) = pos {
+						intact_claims.remove(idx);
+					}
+
+					let pos = intact_claims.iter().position(|c_id| *c_id == id);
+					if let Some(idx) = pos {
+						intact_claims.remove(idx);
+					}
+				} else {
+					column[(y + claim.coords.y) as usize] = Some(claim.id);
+				}
+			}
+		}
+	}
+
+	println!("claims len: {}", intact_claims.len());
+	return intact_claims[0];
 }
