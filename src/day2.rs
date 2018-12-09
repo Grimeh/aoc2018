@@ -45,10 +45,10 @@ fn check_ids(a: &str, b: &str) -> String {
 	let mut result = String::new();
 
 	let achars = a.chars();
-	let mut bchars = b.chars();
+	let bchars = b.chars();
 
-	for c in achars {
-		if c == bchars.next().unwrap() {
+	for (c, b) in achars.zip(bchars) {
+		if c == b {
 			result.push(c);
 		}
 	}
@@ -58,7 +58,7 @@ fn check_ids(a: &str, b: &str) -> String {
 
 // find the two boxes with only one differing character (location sensitive),
 // return the common characters
-pub fn p2(input: &str) -> String {
+pub fn p2(input: &str) -> Option<String> {
 	let lines: Vec<&str> = input.lines().collect();
 	let mut a = 0;
 	while a < lines.len() {
@@ -68,12 +68,12 @@ pub fn p2(input: &str) -> String {
 			let idb = lines[b];
 			let matching = check_ids(ida, idb);
 			if matching.len() == ida.len() - 1 {
-				return matching;
+				return Some(matching);
 			}
 			b += 1;
 		}
 		a += 1;
 	}
 
-	panic!("Could not find the boxes");
+	return None;
 }

@@ -1,9 +1,17 @@
+#![feature(test)]
+
+extern crate test;
+extern crate int_hash;
+extern crate hashbrown;
+
 mod day1;
 mod day2;
 mod day3;
 
 #[cfg(test)]
 mod tests {
+    use test::Bencher;
+
     fn file_to_str(filename: &str) -> String {
         use std::fs::File;
         use std::io::prelude::*;
@@ -19,14 +27,14 @@ mod tests {
     fn day1p1() {
     	let contents = file_to_str("day1.txt");
     	let value = ::day1::d1p1(&contents);
-    	println!("Day 1 part 1 result: {}", value);
+    	println!("Day 1 part 1 result: {}", value.unwrap());
     }
 
     #[test]
     fn day1p2() {
     	let contents = file_to_str("day1.txt");
     	let value = ::day1::d1p2(&contents);
-    	println!("Day 1 part 2 result: {}", value);
+    	println!("Day 1 part 2 result: {}", value.unwrap());
     }
 
     #[test]
@@ -39,21 +47,57 @@ mod tests {
     #[test]
     fn day2p2() {
         let contents = file_to_str("day2.txt");
-        let value = ::day2::p2(&contents);
+        let value = ::day2::p2(&contents).expect("failed to find the boxes");
         println!("Day 2 part 2 result: {}", value);
     }
 
     #[test]
     fn day3p1() {
         let contents = file_to_str("day3.txt");
-        let value = ::day3::p1(&contents);
+        let value = ::day3::p1(&contents).unwrap();
         println!("Day 3 part 1 result: {}", value);
+    }
+
+    #[bench]
+    fn day3p1_vector(bencher: &mut Bencher) {
+        bencher.iter(|| {
+            let contents = file_to_str("day3.txt");
+            let value = ::day3::p1(&contents).unwrap();
+            println!("Day 3 part 1 result: {}", value);
+        });
+    }
+
+    #[bench]
+    fn day3p1_hashmap(bencher: &mut Bencher) {
+        bencher.iter(|| {
+            let contents = file_to_str("day3.txt");
+            let value = ::day3::p1_hashmap(&contents).unwrap();
+            println!("Day 3 part 1 result: {}", value);
+        });
     }
     
     #[test]
     fn day3p2() {
         let contents = file_to_str("day3.txt");
-        let value = ::day3::p2(&contents);
+        let value = ::day3::p2(&contents).unwrap();
         println!("Day 3 part 2 result: {}", value);
+    }
+
+    #[bench]
+    fn day3p2_vector(bencher: &mut Bencher) {
+        bencher.iter(|| {
+            let contents = file_to_str("day3.txt");
+            let value = ::day3::p2(&contents).unwrap();
+            println!("Day 3 part 2 result: {}", value);
+        });
+    }
+
+    #[bench]
+    fn day3p2_hashmap(bencher: &mut Bencher) {
+        bencher.iter(|| {
+            let contents = file_to_str("day3.txt");
+            let value = ::day3::p2_hashmap(&contents).unwrap();
+            println!("Day 3 part 2 result: {}", value);
+        });
     }
 }

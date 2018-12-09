@@ -3,6 +3,14 @@
 // 		#123 @ 3,2: 5x4
 // 		#id @ x,y: wxh
 
+use std::error::Error;
+
+// macro stolen from https://github.com/BurntSushi/advent-of-code/blob/master/aoc03/src/main.rs
+// Disclaimer: I have no clue how rust macros work just yet
+macro_rules! err {
+	($($tt:tt)*) => { Err(Box::<Error>::from(format!($($tt)*))) }
+}
+
 fn tokenise(input: &str) -> Vec<u32> {
 	let mut result = Vec::new();
 	let mut token_idx: i64 = -1;
@@ -12,7 +20,6 @@ fn tokenise(input: &str) -> Vec<u32> {
 		if token_idx != -1 {
 			if !is_digit {
 				// we've reached end of the token
-				// println!("found token at {}..{}: {:?}", token_idx, i, &input[token_idx as usize..i]);
 				result.push(input[token_idx as usize..i].parse::<u32>().unwrap());
 				token_idx = -1;
 			}
@@ -32,123 +39,184 @@ fn tokenise(input: &str) -> Vec<u32> {
 }
 
 #[derive(Debug)]
-struct Rect {
-	x: u32,
-	y: u32,
-}
-
-impl Rect {
-	fn new() -> Rect {
-		Rect {
-			x: 0,
-			y: 0,
-		}
-	}
-}
-
-#[derive(Debug)]
 struct Claim {
 	id: u32,
-	coords: Rect,
-	size: Rect,
+	x: u32,
+	y: u32,
+	w: u32,
+	h: u32,
 }
-
-// impl Copy for Claim {}
-
-// impl Clone for Claim {
-// 	fn clone(&self) -> Claim {
-// 		*self
-// 	}
-// }
 
 impl Claim {
-	fn new() -> Claim {
-		Claim {
-			id: 0,
-			coords: Rect {
-				x: 0,
-				y: 0,
-			},
-			size: Rect {
-				x: 0,
-				y: 0,
-			},
+	// dumb parser, doesn't check for correct syntax, just number of numbers
+	fn parse(input: &str) -> Result<Claim, Box<Error>> {
+		let tokens = tokenise(input);
+
+		if tokens.len() != 5 {
+			return err!("invalid input");
 		}
+
+		Ok(Claim {
+			id: tokens[0],
+			x: tokens[1],
+			y: tokens[2],
+			w: tokens[3],
+			h: tokens[4],
+		})
 	}
 
-	fn parse(input: &str) -> Claim {
-		let tokens = tokenise(input);
-		// TODO check if tokens length is not exactly equal to what we need
-
-		return Claim {
-			id: tokens[0],
-			coords: Rect {
-				x: tokens[1],
-				y: tokens[2],
-			},
-			size: Rect {
-				x: tokens[3],
-				y: tokens[4],
-			},
-		};
+	fn points(&self) -> Points {
+		Points::new(self)
 	}
 }
 
-// calculate how many square inches of the 1000x1000 square inch fabric have 2 or more overlapping claims
-pub fn p1(input: &str) -> u32 {
+// iterator impl shamelessly stolen (w/ slight modification) from BurntSushi's impl
+// @ https://github.com/BurntSushi/advent-of-code/blob/master/aoc03/src/main.rs
+
+// lifetime required for claim reference
+struct Points<'a> {
+	claim: &'a Claim,
+	i: u32,
+}
+
+impl<'a> Points<'a> {
+	fn new(claim: &'a Claim) -> Points<'a> {
+		Points {
+			claim: claim,
+			i: 0,
+		}
+	}
+}
+
+impl<'a> Iterator for Points<'a> {
+	type Item = (u32, u32);
+
+	fn next(&mut self) -> Option<(u32, u32)> {
+		let x = self.i / self.claim.h;
+		if x > self.claim.w {
+			return None;
+		}
+		let result = (self.claim.x + x, self.claim.y + (self.i % self.claim.h));
+		self.i += 1;
+		Some(result)
+	}
+}
+
+fn parse_input(input: &str) -> Result<Vec<Claim>, Box<Error>> {
+	let mut claims = Vec::new();
+
+	for line in input.lines() {
+		let claim = Claim::parse(line).or_else(|_| {
+			err!("could not parse line \"{}\"", line)
+		})?;
+		claims.push(claim);
+	}
+
+	return Ok(claims);
+}
+
+/* calculate how many square inches of the 1000x1000 square inch fabric
+   have 2 or more overlapping claims */
+pub fn p1(input: &str) -> Result<u32, Box<Error>> {
 	let mut result = 0;
 
 	let mut fabric = Vec::new();
 	fabric.resize(1000, [0_u32; 1000]);
-
-	let claims = input.lines().map(|line| Claim::parse(line));
+	let claims = parse_input(input)?;
 
 	for claim in claims {
-		for x in 0..claim.size.x {
-			let column = &mut fabric[(x + claim.coords.x) as usize];
-			for y in 0..claim.size.y {
-				let cell = &mut column[(y + claim.coords.y) as usize];
-				*cell += 1;
-				if *cell == 2 {
-					result += 1;
-				}
+		for (x, y) in claim.points() {
+			let cell = &mut fabric[x as usize][y as usize];
+			*cell += 1;
+			if *cell == 2 {
+				result += 1;
 			}
 		}
 	}
 
-	return result;
+	Ok(result)
+}
+
+// same as above except with a hashmap, for benchmarking
+pub fn p1_hashmap(input: &str) -> Result<u32, Box<Error>> {
+	use hashbrown::HashMap;
+
+	let mut result = 0;
+	// exact number of cells actually used is 350,883
+	let mut fabric = HashMap::with_capacity(350883);
+	let claims = parse_input(input)?;
+
+	for claim in claims {
+		for (x, y) in claim.points() {
+			let cell = fabric.entry((x, y)).or_insert(0);
+			*cell += 1;
+			if *cell == 2 {
+				result += 1;
+			}
+		}
+	}
+
+	Ok(result)
 }
 
 // find the single claim that does not overlap any other claim
-pub fn p2(input: &str) -> u32 {
+pub fn p2(input: &str) -> Result<u32, Box<Error>> {
 	let mut fabric = Vec::new();
 	fabric.resize(1000, [None; 1000]);
 
-	let claims: Vec<Claim> = input.lines().map(|line| Claim::parse(line)).collect();
+	let claims = parse_input(input)?;
+	// this is sorted by default; input is sorted already
 	let mut intact_claims: Vec<u32> = claims.iter().map(|claim| claim.id).collect();
 
 	for claim in claims {
-		for x in 0..claim.size.x {
-			let column = &mut fabric[(x + claim.coords.x) as usize];
-			for y in 0..claim.size.y {
-				let cell = column[(y + claim.coords.y) as usize];
-				if let Some(id) = cell {
-					let pos = intact_claims.iter().position(|c_id| *c_id == id);
-					if let Some(idx) = pos {
-						intact_claims.remove(idx);
-					}
-
-					let pos = intact_claims.iter().position(|c_id| *c_id == id);
-					if let Some(idx) = pos {
-						intact_claims.remove(idx);
-					}
-				} else {
-					column[(y + claim.coords.y) as usize] = Some(claim.id);
+		for (x, y) in claim.points() {
+			let cell = fabric[x as usize][y as usize];
+			if let Some(id) = cell {
+				let pos = intact_claims.binary_search(&claim.id);
+				if let Ok(idx) = pos {
+					intact_claims.remove(idx);
 				}
+
+				let pos = intact_claims.binary_search(&id);
+				if let Ok(idx) = pos {
+					intact_claims.remove(idx);
+				}
+			} else {
+				fabric[x as usize][y as usize] = Some(claim.id);
 			}
 		}
 	}
 
-	println!("claims len: {}", intact_claims.len());
-	return intact_claims[0];
+	Ok(intact_claims[0])
+}
+
+pub fn p2_hashmap(input: &str) -> Result<u32, Box<Error>> {
+	use hashbrown::HashSet;
+
+	let mut fabric = Vec::new();
+	fabric.resize(1000, [None; 1000]);
+
+	let claims = parse_input(input)?;
+
+	let mut intact_claims = HashSet::with_capacity(claims.len());
+	for claim in claims.iter() {
+		intact_claims.insert(claim.id);
+	}
+
+	for claim in claims {
+		for (x, y) in claim.points() {
+			let cell = fabric[x as usize][y as usize];
+			if let Some(id) = cell {
+				intact_claims.remove(&claim.id);
+				intact_claims.remove(&id);
+			} else {
+				fabric[x as usize][y as usize] = Some(claim.id);
+			}
+		}
+	}
+
+	match intact_claims.iter().next() {
+		Some(value) => Ok(*value),
+		None => err!("could not find a non-overlapping claim"),
+	}
 }
