@@ -1,12 +1,14 @@
 #![feature(test)]
 
 extern crate test;
-extern crate int_hash;
 extern crate hashbrown;
 
+#[macro_use]
+mod common;
 mod day1;
 mod day2;
 mod day3;
+// mod day4;
 
 #[cfg(test)]
 mod tests {

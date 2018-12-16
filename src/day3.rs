@@ -5,12 +5,6 @@
 
 use std::error::Error;
 
-// macro stolen from https://github.com/BurntSushi/advent-of-code/blob/master/aoc03/src/main.rs
-// Disclaimer: I have no clue how rust macros work just yet
-macro_rules! err {
-	($($tt:tt)*) => { Err(Box::<Error>::from(format!($($tt)*))) }
-}
-
 fn tokenise(input: &str) -> Vec<u32> {
 	let mut result = Vec::new();
 	let mut token_idx: i64 = -1;
@@ -49,7 +43,7 @@ struct Claim {
 
 impl Claim {
 	// dumb parser, doesn't check for correct syntax, just number of numbers
-	fn parse(input: &str) -> Result<Claim, Box<Error>> {
+	fn parse(input: &str) -> Result<Claim> {
 		let tokens = tokenise(input);
 
 		if tokens.len() != 5 {
@@ -102,7 +96,7 @@ impl<'a> Iterator for Points<'a> {
 	}
 }
 
-fn parse_input(input: &str) -> Result<Vec<Claim>, Box<Error>> {
+fn parse_input(input: &str) -> Result<Vec<Claim>> {
 	let mut claims = Vec::new();
 
 	for line in input.lines() {
@@ -117,7 +111,7 @@ fn parse_input(input: &str) -> Result<Vec<Claim>, Box<Error>> {
 
 /* calculate how many square inches of the 1000x1000 square inch fabric
    have 2 or more overlapping claims */
-pub fn p1(input: &str) -> Result<u32, Box<Error>> {
+pub fn p1(input: &str) -> Result<u32> {
 	let mut result = 0;
 
 	let mut fabric = Vec::new();
@@ -138,7 +132,7 @@ pub fn p1(input: &str) -> Result<u32, Box<Error>> {
 }
 
 // same as above except with a hashmap, for benchmarking
-pub fn p1_hashmap(input: &str) -> Result<u32, Box<Error>> {
+pub fn p1_hashmap(input: &str) -> Result<u32> {
 	use hashbrown::HashMap;
 
 	let mut result = 0;
@@ -160,7 +154,7 @@ pub fn p1_hashmap(input: &str) -> Result<u32, Box<Error>> {
 }
 
 // find the single claim that does not overlap any other claim
-pub fn p2(input: &str) -> Result<u32, Box<Error>> {
+pub fn p2(input: &str) -> Result<u32> {
 	let mut fabric = Vec::new();
 	fabric.resize(1000, [None; 1000]);
 
@@ -190,7 +184,7 @@ pub fn p2(input: &str) -> Result<u32, Box<Error>> {
 	Ok(intact_claims[0])
 }
 
-pub fn p2_hashmap(input: &str) -> Result<u32, Box<Error>> {
+pub fn p2_hashmap(input: &str) -> Result<u32> {
 	use hashbrown::HashSet;
 
 	let mut fabric = Vec::new();
