@@ -1,4 +1,5 @@
 #![feature(test)]
+#![allow(dead_code)]
 
 extern crate test;
 extern crate hashbrown;
@@ -8,7 +9,7 @@ mod common;
 mod day1;
 mod day2;
 mod day3;
-// mod day4;
+mod day4;
 
 #[cfg(test)]
 mod tests {
@@ -101,5 +102,12 @@ mod tests {
             let value = ::day3::p2_hashmap(&contents).unwrap();
             println!("Day 3 part 2 result: {}", value);
         });
+    }
+
+    #[test]
+    fn day4p1() {
+        let contents = file_to_str("day4.txt");
+        let value = ::day4::p1(&contents).unwrap();
+        println!("Day 4 part 1 result: {}", value);
     }
 }

@@ -4,6 +4,7 @@
 // 		#id @ x,y: wxh
 
 use std::error::Error;
+use common::Result;
 
 fn tokenise(input: &str) -> Vec<u32> {
 	let mut result = Vec::new();

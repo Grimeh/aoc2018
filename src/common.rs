@@ -5,4 +5,5 @@ macro_rules! err {
 	($($tt:tt)*) => { Err(Box::<Error>::from(format!($($tt)*))) }
 }
 
-type Result<T> = Result<T, Box<Error>>;
+use std::error::Error;
+pub type Result<T> = std::result::Result<T, Box<Error>>;
