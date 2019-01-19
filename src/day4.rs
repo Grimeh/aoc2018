@@ -213,7 +213,6 @@ pub fn p1(input: &str) -> Result<u32> {
 	for record in guard_records.iter() {
 		for sleep_period in record.sleep_periods.iter() {
 			let range = sleep_period.0..sleep_period.1;
-			println!("guard {} slept from {} to {}", record.guard, range.start, range.end);
 			for min in range {
 				minutes[min as usize] += 1;
 			}
@@ -226,6 +225,47 @@ pub fn p1(input: &str) -> Result<u32> {
 	}
 	let most_slept_minute = most_slept_minute.unwrap();
 
-	println!("guard {}, minute {}", chosen_guard.0, most_slept_minute.0);
 	return Ok(chosen_guard.0 * most_slept_minute.0 as u32);
+}
+
+pub fn p2(input: &str) -> Result<u32> {
+	let mut lines: Vec<&str> = input.lines().collect();
+	lines.sort();
+
+	let events: Result<Vec<_>> = lines.iter().map(|line| Input::from_str(line)).collect();
+
+	let guard_records = GuardRecord::from_records(&events?)?;
+
+	let mut guards: HashMap<u32, Vec<GuardRecord>> = HashMap::new();
+	for record in guard_records {
+		let entry = guards.entry(record.guard).or_default();
+		entry.push(record);
+	}
+
+	let mut result = (0, (0, 0));
+	let mut minutes = [0; 60];
+	for (guard, records) in guards.iter() {
+		// reset array
+		for min in &mut minutes[0..] { *min = 0; }
+
+		for record in records.iter() {
+			for sleep_period in record.sleep_periods.iter() {
+				let range = sleep_period.0..sleep_period.1;
+				for min in range {
+					minutes[min as usize] += 1;
+				}
+			}
+		}
+
+		let max = minutes.iter().enumerate().max_by(|x, y| x.1.cmp(y.1));
+		if max.is_none() {
+			return err!("failed to find max?");
+		}
+		let max = max.unwrap();
+		if *max.1 > (result.1).1 {
+			result = (*guard, (max.0, *max.1));
+		}
+	}
+
+	return Ok(result.0 * (result.1).0 as u32);
 }

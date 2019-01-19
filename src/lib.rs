@@ -110,4 +110,11 @@ mod tests {
         let value = ::day4::p1(&contents).unwrap();
         println!("Day 4 part 1 result: {}", value);
     }
+
+    #[test]
+    fn day4p2() {
+        let contents = file_to_str("day4.txt");
+        let value = ::day4::p2(&contents).unwrap();
+        println!("Day 4 part 2 result: {}", value);
+    }
 }
