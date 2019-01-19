@@ -19,139 +19,213 @@ use common::Result;
 [1518-11-22 00:44] wakes up
 */
 
-#[derive(Debug)]
-struct GuardRecord {
-	day: u32, // day of the year
-	time: i32, // minutes from midnight
-	awake: bool, // is the guard currently awake?
+//#[derive(Debug)]
+//struct GuardRecord {
+//	day: u32, // day of the year
+//	time: i32, // minutes from midnight
+//	awake: bool, // is the guard currently awake?
+//}
+
+fn parse_from_str<T>(input: &str) -> Option<T>
+	where T: std::str::FromStr,
+		  <T as std::str::FromStr>::Err : std::fmt::Debug
+{
+	let value = input
+		.parse::<T>();
+	if value.is_err() {
+		return None;
+	}
+	return Some(value.unwrap());
 }
 
-impl GuardRecord {
-	fn parse(input: &str) -> Option<GuardRecord> {
-		let mut tokens = input
+#[derive(Debug, PartialEq)]
+enum InputEvent {
+	BeginShift(u32),
+	FallAsleep,
+	Wake,
+}
+
+#[derive(Debug)]
+struct Input {
+	day: u32,
+	minute: i32,
+	event: InputEvent,
+}
+
+impl Input {
+	fn is_shift_start(&self) -> bool {
+		use std::mem::discriminant;
+		discriminant(&self.event) == discriminant(&InputEvent::BeginShift(0))
+	}
+
+	fn from_str(input: &str) -> Result<Input> {
+		let tokens: Vec<&str> = input
 			.split(|c| c == '[' || c == '-' || c == ' ' || c == ']' || c == ':')
-			.filter(|token| !token.is_empty());
-
-		let _ = tokens.next()?; // year
-
-		let month = tokens
-			.next()?
-			.parse::<u32>();
-		if month.is_err() {
-			return None
+			.filter(|token| !token.is_empty())
+			.collect();
+		if tokens.len() < 7 {
+			return err!("Invalid input line \"{}\"", input)
 		}
-		let month = month.unwrap();
 
-		let day = tokens
-			.next()?
-			.parse::<u32>();
-		if day.is_err() {
-			return None;
-		}
-		let day = day.unwrap();
+		let month: u32 = tokens[1].parse()?;
+		let mut day: u32 = tokens[2].parse()?;
 
-		let hour = tokens.next()?;
-
-		let minute = tokens
-			.next()?
-			.parse::<i32>();
-		if minute.is_err() {
-			return None
-		}
-		let mut minute = minute.unwrap();
-
-		if hour != "00" {
+		let hour = tokens[3];
+		let mut minute = tokens[4].parse()?;
+		if hour == "23" {
 			minute -= 60;
+			day += 1;
 		}
 
+		let event_token = tokens[5];
+		let event = match event_token {
+			"Guard" => {
+				let guard_token = tokens[6];
+				let id = guard_token[1..].parse()?;
+				Ok(InputEvent::BeginShift(id))
+			},
+			"falls" => Ok(InputEvent::FallAsleep),
+			"wakes" => Ok(InputEvent::Wake),
+			_ => err!("Invalid event \"{}\"", tokens[5]),
+		}?;
 
-		Some(GuardRecord {
-			day: ((month * 30) + day),
-			time: minute,
-			awake: input.contains("begins") || input.contains("wakes"),
+		Ok(Input {
+			day: day + (month * 31),
+			minute,
+			event,
 		})
 	}
 }
 
-fn find_guard_id(input: &str) -> Option<u32> {
-	let start_idx = input.find('#')?;
-	let slice = &input[start_idx + 1..];
-	let end_idx = slice.find(' ').unwrap(); // invalid input if not found
-	let slice = &slice[..end_idx];
+#[derive(Debug)]
+struct GuardRecord {
+	guard: u32, // guard on duty
+	day: u32, // day of the year
+	sleep_periods: Vec<(i32, i32)>, // (fell asleep, woke up]
+}
 
-	Some(slice.parse::<u32>().unwrap()) // invalid input if not able to convert to u16
+impl GuardRecord {
+	fn total_minutes_slept(&self) -> u32{
+		return self.sleep_periods
+			.iter()
+			.fold(0, |val, el| val + (el.1 - el.0)) as u32;
+	}
+
+	fn sleep_periods_from(slice: &[Input]) -> Result<Vec<(i32, i32)>> {
+		let mut result = Vec::new();
+		let mut last_day = None;
+		let mut iter = slice.iter();
+		while let Some(sleep) = iter.next() {
+			if last_day.is_some() && last_day.unwrap() != sleep.day {
+				return err!("iter contains events from different days!")
+			}
+			last_day = Some(sleep.day);
+
+			let wake = iter.next();
+			if wake.is_none() {
+				return err!("missing wake event");
+			}
+			let wake = wake.unwrap();
+
+			let valid_events =
+				sleep.event == InputEvent::FallAsleep &&
+				wake.event == InputEvent::Wake;
+
+			if valid_events {
+				result.push((sleep.minute, wake.minute))
+			} else {
+				return err!("unexpected event types {:?}, {:?}", sleep.event, wake.event);
+			}
+		}
+		return Ok(result);
+	}
+
+	fn from_records(input: &[Input]) -> Result<Vec<GuardRecord>> {
+		let mut result = Vec::new();
+
+		let mut idx = 0;
+		loop {
+			if idx >= input.len() {
+				return Ok(result);
+			}
+
+			let shift_start = &input[idx];
+			let guard = match shift_start.event {
+				InputEvent::BeginShift(id) => Ok(id),
+				_ => err!("input @ {} not shift start", idx),
+			}?;
+
+			let mut next_idx = None;
+			for night in input[idx + 1..].iter().enumerate() {
+				match night.1.event {
+					InputEvent::BeginShift(_) => {
+						next_idx = Some(night.0);
+						break;
+					},
+					_ => continue,
+				}
+			}
+
+			let next_idx = if let Some(i) = next_idx {
+				idx + 1 + i
+			} else {
+				input.len()
+			};
+
+			let slice = &input[idx + 1..next_idx];
+			result.push(GuardRecord {
+				guard,
+				day: shift_start.day,
+				sleep_periods: GuardRecord::sleep_periods_from(slice)?,
+			});
+
+			idx = next_idx;
+		}
+	}
 }
 
 pub fn p1(input: &str) -> Result<u32> {
-	let mut records: HashMap<u32, Vec<GuardRecord>>= HashMap::new();
-
 	let mut lines: Vec<&str> = input.lines().collect();
 	lines.sort();
 
-	let mut cur_id = 0;
-	for line in lines.iter() {
-//		println!("{}", line);
-		let record = GuardRecord::parse(line);
-		if record.is_none() {
-			return err!("Could not parse input")
-		}
-		let record = record.unwrap();
+	let events: Result<Vec<_>> = lines.iter().map(|line| Input::from_str(line)).collect();
 
-		let record_id = find_guard_id(line);
-		if let Some(id) = record_id {
-			cur_id = id;
-		}
+	let guard_records = GuardRecord::from_records(&events?)?;
 
-		let guard_records = records.entry(cur_id).or_insert(Vec::new());
-		guard_records.push(record);
-	}
-
-	let mut most_asleep = (0, 0);
-	for (id, guard_records) in &records {
-		let mut asleep = None;
-		let mut time_asleep = 0;
-		for record in guard_records {
-			if !record.awake {
-				asleep = Some(record);
-			} else if asleep.is_some() {
-				time_asleep += (record.time - asleep.unwrap().time) as u32;
-				asleep = None;
-			}
-		}
-
-		if time_asleep > most_asleep.1 {
-			most_asleep = (*id, time_asleep);
-		}
-	}
-
-	let mut sleep_pattern = [0; 120];
-	let guard_records = records.get(&most_asleep.0).unwrap();
-	let mut time_asleep = None;
+	let mut guards: HashMap<u32, Vec<GuardRecord>> = HashMap::new();
 	for record in guard_records {
-		if !record.awake {
-			time_asleep = Some(record.time);
-		} else {
-			if time_asleep.is_some() {
-				let time_asleep = time_asleep.unwrap();
-				let duration = record.time - time_asleep;
-				let range = (time_asleep + 60) as usize..(record.time + 60) as usize;
-				let minutes = &mut sleep_pattern[range];
-				for mut minute in minutes {
-					*minute += duration;
-				}
+		let entry = guards.entry(record.guard).or_default();
+		entry.push(record);
+	}
+
+	let mut chosen_guard = (0, 0);
+	for (guard, records) in guards.iter() {
+		let mins_slept = records.iter().fold(
+			0,
+			|total, record| total + record.total_minutes_slept());
+		if mins_slept > chosen_guard.1 {
+			chosen_guard = (*guard, mins_slept);
+		}
+	}
+
+	let mut minutes = [0; 60];
+	let guard_records = &guards[&chosen_guard.0];
+	for record in guard_records.iter() {
+		for sleep_period in record.sleep_periods.iter() {
+			let range = sleep_period.0..sleep_period.1;
+			println!("guard {} slept from {} to {}", record.guard, range.start, range.end);
+			for min in range {
+				minutes[min as usize] += 1;
 			}
-			time_asleep = None;
 		}
 	}
 
-
-	let mut best_minute = (0, 0);
-	for (idx, duration) in sleep_pattern.iter().enumerate() {
-//		println!("minute {}: {}", idx, duration);
-		if duration > &best_minute.0 {
-			best_minute = (*duration, idx);
-		}
+	let most_slept_minute = minutes.iter().enumerate().max_by(|x, y| x.1.cmp(y.1));
+	if most_slept_minute.is_none() {
+		return err!("Could not find minute spent asleep the most");
 	}
+	let most_slept_minute = most_slept_minute.unwrap();
 
-	return Ok(((best_minute.0 - 60) * best_minute.1 as i32) as u32);
+	println!("guard {}, minute {}", chosen_guard.0, most_slept_minute.0);
+	return Ok(chosen_guard.0 * most_slept_minute.0 as u32);
 }
