@@ -10,6 +10,7 @@ mod day1;
 mod day2;
 mod day3;
 mod day4;
+mod day5;
 
 #[cfg(test)]
 mod tests {
@@ -116,5 +117,19 @@ mod tests {
         let contents = file_to_str("day4.txt");
         let value = ::day4::p2(&contents).unwrap();
         println!("Day 4 part 2 result: {}", value);
+    }
+
+    #[test]
+    fn day5p1() {
+        let contents = file_to_str("day5.txt");
+        let value = ::day5::p1(&contents);
+        println!("Day 5 part 1 result: {}", value);
+    }
+
+    #[test]
+    fn day5p2() {
+        let contents = file_to_str("day5.txt");
+        let value = ::day5::p2(&contents);
+        println!("Day 5 part 2 result: {}", value);
     }
 }
